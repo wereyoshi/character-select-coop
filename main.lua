@@ -2451,3 +2451,14 @@ local function chat_command(msg)
 end
 
 hook_chat_command("char-select", "- Opens the Character Select Menu", chat_command)
+
+local function mod_menu_open_cs()
+    local m = gMarioStates[0]
+    if menu_is_allowed(m) then
+        game_unpause()
+        menu = true
+    else
+        play_sound(SOUND_MENU_CAMERA_BUZZ, m.pos)
+    end
+end
+hook_mod_menu_button("Open Menu", mod_menu_open_cs)
