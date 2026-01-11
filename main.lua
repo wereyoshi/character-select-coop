@@ -139,6 +139,7 @@ characterTable = {
         playtime = 0,
         autoDialog = true,
         replaceModels = {},
+        replaceTextures = {},
         [1] = {
             name = "Mario",
             description = "The iconic Italian plumber himself! He's quite confident and brave, always prepared to jump into action to save the Mushroom Kingdom!",
@@ -179,6 +180,7 @@ characterTable = {
         playtime = 0,
         autoDialog = true,
         replaceModels = {},
+        replaceTextures = {},
         [1] = {
             name = "Luigi",
             description = "The other iconic Italian plumber! He's a bit shy and scares easily, but he's willing to follow his brother Mario through any battle that may come their way!",
@@ -210,6 +212,7 @@ characterTable = {
         playtime = 0,
         autoDialog = true,
         replaceModels = {},
+        replaceTextures = {},
         [1] = {
             name = "Toad",
             description = "Princess Peach's little attendant! He's an energetic little mushroom that's never afraid to follow Mario and Luigi on their adventures!",
@@ -241,6 +244,7 @@ characterTable = {
         playtime = 0,
         autoDialog = true,
         replaceModels = {},
+        replaceTextures = {},
         [1] = {
             name = "Waluigi",
             description = "The mischievous rival of Luigi! He's a narcissistic competitor that takes great taste in others getting pummeled from his success!",
@@ -272,6 +276,7 @@ characterTable = {
         playtime = 0,
         autoDialog = true,
         replaceModels = {},
+        replaceTextures = {},
         [1] = {
             name = "Wario",
             description = "The mischievous rival of Mario! He's a greed-filled treasure hunter obsessed with money and gold coins. He's always ready for a brawl if his money is on the line!",
@@ -308,7 +313,6 @@ local characterTableRender = {}
 
 characterCaps = {}
 characterColorPresets = {}
-characterpeachletter = {} --the custom texture a character uses for peach's letter in the opening
 characterAnims = {
     [E_MODEL_MARIO] = {
         anims = {[CS_ANIM_MENU] = MARIO_ANIM_CS_MENU},
@@ -349,6 +353,8 @@ characterGraffiti = {
     [CT_WARIO]   = get_texture_info("char_select_graffiti_wario"),
 }
 characterDialog = {}
+
+texturesModified = {}
 
 tableRefNum = 0
 local function make_table_ref_num()
@@ -553,10 +559,43 @@ local function update_character_render_table()
     end
 end
 
+hookTableOnCharacterChange = {
+    [1] = function (prevChar, currChar)
+        local m = gMarioStates[0]
+
+        -- Switch all models to either Vanilla or the Character's
+        set_all_visuals(currChar)
+        
+        -- Reset anim to ensure Custom Anims don't leak
+        m.marioObj.header.gfx.animInfo.animID = -1
+        -- Check for Non-Vanilla Actions when switching Characters
+        if is_mario_in_vanilla_action(m) or m.health < 256 then return end
+        if m.action & ACT_FLAG_RIDING_SHELL ~= 0 then
+            set_mario_action(m, ACT_RIDING_SHELL_FALL, 0)
+        elseif m.action & ACT_FLAG_ALLOW_FIRST_PERSON ~= 0 then
+            set_mario_action(m, ACT_IDLE, 0)
+        elseif m.action & ACT_GROUP_MOVING ~= 0 or m.action & ACT_FLAG_MOVING ~= 0 then
+            set_mario_action(m, ACT_WALKING, 0)
+        elseif m.action & ACT_GROUP_SUBMERGED ~= 0 or m.action & ACT_FLAG_SWIMMING ~= 0 then
+            -- Need to fix upwarping
+            set_mario_action(m, ACT_WATER_IDLE, 0)
+        else
+            set_mario_action(m, ACT_FREEFALL, 0)
+        end
+    end
+}
+
+local function on_character_change(prevChar, currChar)
+    for i = 1, #hookTableOnCharacterChange do
+        hookTableOnCharacterChange[i](prevChar, currChar)
+    end
+end
+
 function force_set_character(charNum, charAlt)
     if not charNum then charNum = gNetworkPlayers[0].modelIndex end
     if not charAlt then charAlt = 1 end
     currCategory = 1
+    prevChar = currChar
     currChar = charNum
     characterTable[currChar].currAlt = charAlt
     currCharRender = charNum
@@ -823,35 +862,6 @@ local function menu_is_allowed(m)
     return true
 end
 
-hookTableOnCharacterChange = {
-    [1] = function (prevChar, currChar)
-        -- Check for Non-Vanilla Actions when switching Characters
-        local m = gMarioStates[0]
-        if is_mario_in_vanilla_action(m) or m.health < 256 then return end
-        if m.action & ACT_FLAG_RIDING_SHELL ~= 0 then
-            set_mario_action(m, ACT_RIDING_SHELL_FALL, 0)
-        elseif m.action & ACT_FLAG_ALLOW_FIRST_PERSON ~= 0 then
-            set_mario_action(m, ACT_IDLE, 0)
-        elseif m.action & ACT_GROUP_MOVING ~= 0 or m.action & ACT_FLAG_MOVING ~= 0 then
-            set_mario_action(m, ACT_WALKING, 0)
-        elseif m.action & ACT_GROUP_SUBMERGED ~= 0 or m.action & ACT_FLAG_SWIMMING ~= 0 then
-            -- Need to fix upwarping
-            set_mario_action(m, ACT_WATER_IDLE, 0)
-        else
-            set_mario_action(m, ACT_FREEFALL, 0)
-        end
-
-        -- Switch all models to either Vanilla or the Character's
-        set_all_models()
-    end
-}
-
-local function on_character_change(prevChar, currChar)
-    for i = 1, #hookTableOnCharacterChange do
-        hookTableOnCharacterChange[i](prevChar, currChar)
-    end
-end
-
 -------------------
 -- Model Handler --
 -------------------
@@ -917,7 +927,6 @@ local function mario_update(m)
                 boot_note()
             end
         end
-        set_all_models()
         queueStorageFailsafe = false
     end
     
@@ -1000,7 +1009,7 @@ local function mario_update(m)
         end
 
         if prevVisualToggle ~= optionTable[optionTableRef.localVisuals].toggle then
-            set_all_models()
+            set_all_visuals()
             prevVisualToggle = optionTable[optionTableRef.localVisuals].toggle
         end
 
@@ -1246,13 +1255,9 @@ local sCapBhvs = {
     [id_bhvMetalCap] = true,
 }
 
-define_custom_obj_fields({
-    oOriginalModel = 'u32',
-    oModelHasBeenReplaced = 'u32',
-})
-
 ---@param o Object
-function set_model(o, model)
+function set_model(o, model, _, charNum)
+    local charNum = charNum or currChar
     -- Extended Model Incompatible
     if obj_get_model_id_extended(o) == E_MODEL_ERROR_MODEL then return end
 
@@ -1312,8 +1317,8 @@ function set_model(o, model)
                 end
             end
         end
-    elseif characterTable[currChar].replaceModels ~= nil then -- Other Custom Models
-        local currReplace = characterTable[currChar].replaceModels[get_id_from_behavior(o.behavior)]
+    elseif characterTable[charNum].replaceModels ~= nil then -- Other Custom Models
+        local currReplace = characterTable[charNum].replaceModels[get_id_from_behavior(o.behavior)]
         if o.oOriginalModel == 0 then
             o.oOriginalModel = obj_get_model_id_extended(o)
         end
@@ -1334,30 +1339,39 @@ function set_model(o, model)
     end
 end
 
-function set_all_models()
+hook_event(HOOK_OBJECT_SET_MODEL, set_model)
+
+function set_all_visuals(charNum)
+    local charNum = charNum or currChar
+    local visualToggle = optionTable[optionTableRef.localVisuals].toggle == 1
+
+    -- Replace all Object Models
     for i = 0, NUM_OBJ_LISTS - 1 do
         local o = obj_get_first(i)
         repeat
             if o ~= nil then
-                set_model(o, o.oOriginalModel)
+                set_model(o, o.oOriginalModel, nil, charNum)
             end
             o = obj_get_next(o)
         until o == nil
     end
-end
 
-local function koopa_model_update(o)
-    if o.oKoopaMovementType == KOOPA_BP_UNSHELLED then
-        o.oOriginalModel = E_MODEL_KOOPA_WITHOUT_SHELL
-    else
-        o.oOriginalModel = E_MODEL_KOOPA_WITH_SHELL
+    -- Replace all Textures
+    for i = 1, #texturesModified do
+        if characterTable[charNum].replaceTextures ~= nil then
+            local texName = texturesModified[i]
+            local tex = run_func_or_get_var(characterTable[charNum].replaceTextures[texName])
+            if tex ~= nil and visualToggle then
+                texture_override_set(texName, tex)
+            else
+                texture_override_reset(texName)
+            end
+        end
     end
-    set_model(o)
 end
-hook_behavior(id_bhvKoopa, OBJ_LIST_PUSHABLE, false, nil, koopa_model_update)
 
 cs_hook_mario_update(mario_update)
-hook_event(HOOK_OBJECT_SET_MODEL, set_model)
+hook_event(HOOK_ON_SYNC_VALID, set_all_visuals)
 
 ------------------
 -- Menu Handler --

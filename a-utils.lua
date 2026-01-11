@@ -1,8 +1,8 @@
 -- Version Data --
 MOD_VERSION_API = 1
 MOD_VERSION_MAJOR = 16
-MOD_VERSION_MINOR = 1
-MOD_VERSION_INDEV = false
+MOD_VERSION_MINOR = 2
+MOD_VERSION_INDEV = true
 MOD_VERSION_STRING = tostring(MOD_VERSION_API) .. "." .. tostring(MOD_VERSION_MAJOR) .. (MOD_VERSION_MINOR > 0 and ("." .. tostring(MOD_VERSION_MINOR)) or "") .. (MOD_VERSION_INDEV and " (In-Dev)" or "")
 
 -- Check CoopDX Version
@@ -721,3 +721,9 @@ function string_sim(str1, str2)
     if maxLength == 0 then return 1 end
     return (distance / maxLength)
 end
+
+-- Object Fields
+define_custom_obj_fields({
+    oOriginalModel = 'u32',
+    oModelHasBeenReplaced = 'u32',
+})
