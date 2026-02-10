@@ -5,7 +5,7 @@ local network_player_set_override_palette_color,network_player_reset_override_pa
 
 characterColorPresets = {
     [E_MODEL_MARIO] = {
-        currPalette = 1,
+        currPalette = 0,
         {
             name = "Default",
             [PANTS]  = { r = 0x00, g = 0x00, b = 0xff },
@@ -64,7 +64,7 @@ characterColorPresets = {
 
     },
     [E_MODEL_LUIGI] = {
-        currPalette = 1,
+        currPalette = 0,
         {
             name = "Default",
             [PANTS]  = { r = 0x00, g = 0x00, b = 0xff },
@@ -122,7 +122,7 @@ characterColorPresets = {
         },
     },
     [E_MODEL_TOAD_PLAYER] = {
-        currPalette = 1,
+        currPalette = 0,
         {
             name = "Default",
             [PANTS]  = { r = 0xff, g = 0xff, b = 0xff },
@@ -192,7 +192,7 @@ characterColorPresets = {
 
     },
     [E_MODEL_WALUIGI] = {
-        currPalette = 1,
+        currPalette = 0,
         {
             name = "Default",
             [PANTS]  = { r = 0x16, g = 0x16, b = 0x27 },
@@ -262,7 +262,7 @@ characterColorPresets = {
 
     },
     [E_MODEL_WARIO] = {
-        currPalette = 1,
+        currPalette = 0,
         {
             name = "Default",
             [PANTS]  = { r = 0x7f, g = 0x20, b = 0x7a },
