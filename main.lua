@@ -1,6 +1,6 @@
 -- name: Character Select
 -- description:\\#ffff33\\-- Character Select Coop v1.16.3 --\n\n\\#dcdcdc\\A Library / API made to make adding and using Custom Characters as simple as possible!\nUse\\#ffff33\\ /char-select\\#dcdcdc\\ to get started!\n\nCreated by:\\#008800\\ Squishy6094\n\n\\#AAAAFF\\Updates can be found on\nCharacter Select's Github:\n\\#6666FF\\Squishy6094/character-select-coop
--- pausable: false
+-- pausable: true
 -- category: cs
 
 if incompatibleClient then return 0 end
@@ -2442,3 +2442,15 @@ local function chat_command(msg)
 end
 
 hook_chat_command("char-select", "- " .. get_lang_string("cmd_desc"), chat_command)
+
+local function mod_menu_open_cs()
+    local m = gMarioStates[0]
+    if menu_is_allowed(m) then
+        game_unpause()
+        menu = true
+    else
+        play_sound(SOUND_MENU_CAMERA_BUZZ, m.pos)
+    end
+end
+
+hook_mod_menu_button("open cs menu",mod_menu_open_cs)
