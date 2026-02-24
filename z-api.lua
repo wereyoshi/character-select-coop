@@ -72,6 +72,7 @@ local function character_add(name, description, credit, color, modelInfo, baseCh
         autoDialog = true,
         replaceModels = {},
         replaceTextures = {},
+        menuInst = nil,
         [1] = {
             name = name,
             description = type(description) == TYPE_STRING and description or "No description has been provided",
@@ -1159,11 +1160,12 @@ end
 ---@added 1.16
 ---@param charNum integer The character number you want to add instruments for
 ---@param loadedAudio ModAudio The loaded instrumental audio file
----@note Original Song is `.ogg` File Format, `Mono` Channel, `G# Major Key`, `82` BPM, `93.659` Seconds Long, and is set to a sample rate of `22050`. If these requirements are not met then the song will not properly play, or incorrectly fit with the base theme.
+---@note Original Song is `.ogg` File Format, `Mono` Channel, `C Minor Key`, `82` BPM, `93.659` Seconds Long, and is set to a sample rate of `22050`. If these requirements are not met then the song will not properly play, or incorrectly fit with the base theme.
 local function character_add_menu_instrumental(charNum, loadedAudio)
     audio_stream_set_looping(loadedAudio, true)
     audio_stream_set_loop_points(loadedAudio, 0, 93.659*22050)
-    characterInstrumentals[charNum] = {
+    characterTable[charNum].menuInst = loadedAudio.filepath
+    characterInstrumentals[loadedAudio.filepath] = {
         audio = loadedAudio,
         volume = 0,
         targetVolume = 0,
