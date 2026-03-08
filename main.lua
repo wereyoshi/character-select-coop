@@ -906,7 +906,7 @@ local function mario_update(m)
     if m.playerIndex == 0 and (startup_init_stall(1) or queueStorageFailsafe) then
         failsafe_options()
         if not queueStorageFailsafe then
-            load_preferred_char()
+            --load_preferred_char()
             if optionTable[optionTableRef.notification].toggle == 1 then
                 boot_note()
             end
