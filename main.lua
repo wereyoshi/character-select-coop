@@ -107,6 +107,7 @@ local TEX_GEAR           = get_texture_info("char_select_gear")
 LOCKED_NEVER = 0
 LOCKED_TRUE = 1
 LOCKED_FALSE = 2
+LOCKED_COUNT = 0
 
 local SOUND_CHAR_SELECT_THEME = audio_stream_load("char_select_menu_theme.ogg")
 local SOUND_CHAR_SELECT_DIAL = audio_stream_load("char_select_dial_wind.ogg")
@@ -935,6 +936,7 @@ local function mario_update(m)
                 if char.locked ~= prevLockState then
                     update_character_render_table()
                     if prevLockState == LOCKED_TRUE then -- Character was unlocked
+                        LOCKED_COUNT = LOCKED_COUNT - 1
                         if startup_init_stall() and notif then
                             if optionTable[optionTableRef.notification].toggle > 0 then
                                 djui_popup_create(get_lang_string("popup_unlocked", char[1].name), 3)
