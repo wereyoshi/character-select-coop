@@ -102,6 +102,7 @@ local TEX_RECORD         = get_texture_info("char_select_record")
 local TEX_PALETTE_BUCKET = get_texture_info("char_select_palette_bucket")
 local TEX_OPTIONS_TV     = get_texture_info("char_select_options_tv")
 local TEX_GEAR           = get_texture_info("char_select_gear")
+local TEX_PREF_TAG       = get_texture_info("char_select_pref_tag")
 
 LOCKED_NEVER = 0
 LOCKED_TRUE = 1
@@ -117,8 +118,9 @@ audio_stream_set_loop_points(SOUND_CHAR_SELECT_THEME, 0, 93.659*22050)
 
 CS_ANIM_MENU = CHAR_ANIM_MAX + 1
 
-local TEXT_PREF_LOAD_NAME = "Default"
-local TEXT_PREF_LOAD_ALT = 1
+local prefSaveName = "Default"
+local prefNick = "?"
+local prefAlt = 1
 
 --[[
     Note: Do NOT add characters via the characterTable below,
@@ -138,7 +140,10 @@ characterTable = {
         locked = LOCKED_NEVER,
         playtime = 0,
         autoDialog = true,
-        replaceModels = {},
+        replaceModels = {
+            model = {},
+            bhv = {},
+        },
         replaceTextures = {},
         [1] = {
             name = "Mario",
@@ -179,7 +184,10 @@ characterTable = {
         locked = LOCKED_NEVER,
         playtime = 0,
         autoDialog = true,
-        replaceModels = {},
+        replaceModels = {
+            model = {},
+            bhv = {},
+        },
         replaceTextures = {},
         [1] = {
             name = "Luigi",
@@ -211,7 +219,10 @@ characterTable = {
         locked = LOCKED_NEVER,
         playtime = 0,
         autoDialog = true,
-        replaceModels = {},
+        replaceModels = {
+            model = {},
+            bhv = {},
+        },
         replaceTextures = {},
         [1] = {
             name = "Toad",
@@ -243,7 +254,10 @@ characterTable = {
         locked = LOCKED_NEVER,
         playtime = 0,
         autoDialog = true,
-        replaceModels = {},
+        replaceModels = {
+            model = {},
+            bhv = {},
+        },
         replaceTextures = {},
         [1] = {
             name = "Waluigi",
@@ -275,7 +289,10 @@ characterTable = {
         locked = LOCKED_NEVER,
         playtime = 0,
         autoDialog = true,
-        replaceModels = {},
+        replaceModels = {
+            model = {},
+            bhv = {},
+        },
         replaceTextures = {},
         [1] = {
             name = "Wario",
@@ -694,6 +711,7 @@ local function load_preferred_char()
     for i = 0, #characterTable do
         local char = characterTable[i]
         if char.saveName == savedChar and char.locked ~= LOCKED_TRUE then
+            prefSaveName = char.saveName
             currChar = i
             currCharRender = i
             charFound = true
@@ -740,8 +758,8 @@ local function load_preferred_char()
             end
         end
     end
-    TEXT_PREF_LOAD_NAME = string_space_to_underscore(savedNick or savedChar)
-    TEXT_PREF_LOAD_ALT = savedAlt
+    prefNick = savedNick
+    prefAlt = savedAlt
     update_character_render_table()
 end
 
@@ -752,8 +770,8 @@ local function mod_storage_save_pref_char(charTable)
     mod_storage_save("PrefAlt", tostring(charTable.currAlt))
     mod_storage_save("PrefPalette", tostring(gCSPlayers[0].presetPalette))
     mod_storage_save("PrefCharColor", tostring(charTable[charTable.currAlt].color.r) .. "_" .. tostring(charTable[charTable.currAlt].color.g) .. "_" .. tostring(charTable[charTable.currAlt].color.b))
-    TEXT_PREF_LOAD_NAME = string_space_to_underscore(charTable.nickname)
-    TEXT_PREF_LOAD_ALT = charTable.currAlt
+    prefSaveName = charTable.saveName
+    prefAlt = charTable.currAlt
     prefCharColor = charTable[charTable.currAlt].color
 end
 
@@ -989,7 +1007,7 @@ local function mario_update(m)
             set_mario_action(m, ACT_WAKING_UP, m.actionArg)
         end
 
-        if menu and options == OPTIONS_MAIN then
+        if menu and options == OPTIONS_MAIN and currOption == optionTableRef.restrictMovesets then
             if (network_is_server() or network_is_moderator()) and gGlobalSyncTable.charSelectRestrictMovesets < 2 then
                 gGlobalSyncTable.charSelectRestrictMovesets = optionTable[optionTableRef.restrictMovesets].toggle
             end
@@ -1241,14 +1259,6 @@ local sCapBhvs = {
     [id_bhvMetalCap] = true,
 }
 
-local stoppedBhvs = {
-    [id_bhvMario] = true,
-    [id_bhvNormalCap] = true,
-    [id_bhvWingCap] = true,
-    [id_bhvVanishCap] = true,
-    [id_bhvMetalCap] = true,
-}
-
 local settingModel = false
 local obj_set_model_extended = obj_set_model_extended
 ---@param o Object
@@ -1324,18 +1334,36 @@ function set_model(o, model, extendedModel, charNum)
                 end
             end
         end
-    elseif characterTable[charNum].replaceModels ~= nil then -- Other Custom Models
-        if stoppedBhvs[bhvID] then return end
-        local currReplace = characterTable[charNum].replaceModels[get_id_from_behavior(o.behavior)]
-        if o.unused1 ~= extendedModel and currReplace == nil then
-            o.unused1 = extendedModel
+    else
+        local model = o.unused1
+        if characterTable[charNum].replaceModels.bhv ~= nil then -- Other Custom Behaviors
+            local currReplace = characterTable[charNum].replaceModels.bhv[get_id_from_behavior(o.behavior)]
+            if currReplace ~= nil then
+                model = run_func_or_get_var(currReplace, o, o.unused1) or o.unused1
+                if not visualToggle then
+                    model = o.unused1
+                end
+            else
+                if o.unused1 ~= extendedModel then
+                    o.unused1 = extendedModel
+                end
+            end
         end
-        
-        local model = run_func_or_get_var(currReplace, o, o.unused1) or o.unused1
-        if not visualToggle then
-            model = o.unused1
+
+        if characterTable[charNum].replaceModels.model ~= nil then -- Other Custom Models
+            local currReplace = characterTable[charNum].replaceModels.model[extendedModel]
+            if currReplace ~= nil then
+                model = run_func_or_get_var(currReplace, o, o.unused1) or o.unused1
+                if not visualToggle then
+                    model = o.unused1
+                end
+            else
+                if o.unused1 ~= extendedModel then
+                    o.unused1 = extendedModel
+                end
+            end
         end
-        
+
         if obj_has_model_extended(o, model) == 0 then
             settingModel = true
             obj_set_model_extended(o, model)
@@ -1437,7 +1465,7 @@ function update_menu_color()
     if optionTable[optionTableRef.menuColor].toggle > 1 then
         targetMenuColor = menuColorTable[optionTable[optionTableRef.menuColor].toggle - 1]
     elseif optionTable[optionTableRef.menuColor].toggle == 1 then
-        optionTable[optionTableRef.menuColor].toggleNames[2] = TEXT_PREF_LOAD_NAME .. ((TEXT_PREF_LOAD_ALT ~= 1 and currChar ~= 1) and " ("..TEXT_PREF_LOAD_ALT..")" or "") .. " (Pref)"
+        optionTable[optionTableRef.menuColor].toggleNames[2] = prefNick .. ((prefAlt ~= 1 and currChar ~= 1) and " ("..prefAlt..")" or "") .. " (Pref)"
         targetMenuColor = prefCharColor
     elseif characterTable[currChar] ~= nil then
         local char = characterTable[currChar]
@@ -1493,6 +1521,7 @@ local gearRotation = 0
 local paletteTrans = 0
 local optionsMenuOffset = 0
 local optionsMenuOffsetMax = 210
+local prefTagRot = 0
 local function on_hud_render()
     local FONT_USER = djui_menu_get_font()
     djui_hud_set_font(FONT_ALIASED)
@@ -1646,6 +1675,7 @@ local function on_hud_render()
         
         if not gridMenu then
             -- Render Character List
+            local prevGridY = gridYOffset
             gridYOffset = lerp(gridYOffset, currCharRender*buttonSpacing, 0.1)
             djui_hud_set_font(FONT_SPECIAL)
             for i = 0, #characterTableRender do
@@ -1665,6 +1695,18 @@ local function on_hud_render()
                     local charAltCount = #characterTableRender[i]
                     local channel = charTable.menuInst and tostring(math.floor(879 + hash(charTable.menuInst)%(1029 - 879))*0.1) .. " FM " or "---.- -- "
                     channel = channel .. tostring(math.ceil(charTable.playtime / totalPlaytime * 100)) .. "%"
+
+                    -- Preference Tag
+                    if charTable.saveName == prefSaveName then
+                        prefTagRot = math.lerp(prefTagRot, 0, 0.1) + math.clamp(prevGridY - gridYOffset, -7, 7)*0x100
+                        djui_hud_set_rotation(prefTagRot + 0x2000, 0.5, 0.02)
+                        djui_hud_set_color(255, 255, 255, 255)
+                        djui_hud_render_texture_tile(TEX_PREF_TAG, x + (112 + segments*16 + 145)*scale, y + 40*scale, scale*128/64, scale, 0, 0, 64, 128)
+                        djui_hud_set_color(charColor.r, charColor.g, charColor.b, 255)
+                        djui_hud_render_texture_tile(TEX_PREF_TAG, x + (112 + segments*16 + 145)*scale, y + 40*scale, scale*128/64, scale, 64, 0, 64, 128)
+                    end
+                    djui_hud_set_rotation(0, 0, 0)
+
                     -- Backlight
                     djui_hud_set_color(charColor.r*0.5 + 127, charColor.g*0.5 + 127, charColor.b*0.5 + 127, 255)
                     djui_hud_render_rect(x + 96*scale, y + 24*scale, (128*scale + segments*16*scale), 80*scale)
@@ -1993,7 +2035,7 @@ local function on_hud_render()
         djui_hud_set_font(FONT_USER)
         local currCharY = 27
         local text = (not easterEggDynOS
-        and (menu_is_allowed() and "Z " .. get_lang_string("button") .. " - " .. get_lang_string("mod_name") or get_lang_string("menu_unavailible"))
+        and (menu_is_allowed() and "Z " .. get_lang_string("button") .. " - " .. get_lang_string("mod_name") or get_lang_string("menu_unavailable"))
         or "Z - DynOS")
         width = djui_hud_get_screen_width() - djui_hud_measure_text(text)
         djui_hud_set_color(255, 255, 255, 255)
@@ -2407,7 +2449,7 @@ local function chat_command(msg)
             menu = not menu
             return true
         else
-            djui_chat_message_create(get_lang_string("menu_unavailible"))
+            djui_chat_message_create(get_lang_string("menu_unavailable"))
             return true
         end
     end
