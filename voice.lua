@@ -3,6 +3,7 @@ if incompatibleClient then return 0 end
 local TYPE_TABLE = "table"
 local TYPE_USERDATA = "userdata"
 local TYPE_STRING = "string"
+local TYPE_INTEGER = "number"
 
 local SLEEP_TALK_SNORES = 8
 local STARTING_SNORE = 46
@@ -107,6 +108,24 @@ local levelReverbs = {
 
 local stalledAudio = {}
 
+---@param m MarioState
+---@param sound CharacterSound
+local function character_get_sound(m, sound)
+    local voiceTable = character_get_voice(m)
+    if voiceTable == nil or voiceTable[sound] == nil then return nil end
+    local voice = run_func_or_get_var(voiceTable[sound], m)
+    if voice == nil then return nil end
+    if type(voice) == TYPE_TABLE then
+        if #voice > 0 then
+            return voice[math.random(1, #voice)]
+        else
+            return nil
+        end
+    else
+        return voice
+    end
+end
+
 ---@param sample ModAudio
 ---@param pos Vec3f
 ---@param baseVolume number
@@ -137,8 +156,10 @@ local function play_sound_with_reverb(sample, pos, baseVolume, reverbAmount)
 end
 
 
----@param sample ModAudio
+---@param sample ModAudio?
 local function stop_sound_with_reverb(sample)
+    if sample == nil then return end
+    if type(sample) == TYPE_INTEGER then return end
     audio_sample_stop(sample)
     if #stalledAudio > 0 then
         for i = #stalledAudio, 1, -1 do
@@ -159,20 +180,7 @@ local function stop_all_custom_character_sounds()
         if voiceTable ~= nil then
             -- run through each sample
             for sound in pairs(voiceTable) do
-                -- if the sample is found, try to stop it
-                if voiceTable[sound] ~= nil and type(voiceTable[sound]) ~= "string" then
-                    -- if there's no pointer then it must be a sound clip table
-                    if voiceTable[sound]._pointer == nil then
-                        for voice in pairs(voiceTable[sound]) do
-                            if type(voiceTable[sound][voice]) == "string" then
-                                break
-                            end
-                            stop_sound_with_reverb(voiceTable[sound][voice])
-                        end
-                    else
-                        stop_sound_with_reverb(voiceTable[sound])
-                    end
-                end
+                stop_sound_with_reverb(character_get_sound(m, sound))
             end
         end
     end
@@ -197,14 +205,11 @@ function custom_character_sound(m, sound, pos)
     local voiceTable = character_get_voice(m)
     local voiceToggle = optionTable[optionTableRef.localVoices].toggle
     local voiceOff = (voiceToggle == 0 or (voiceToggle == 2 and m.playerIndex ~= 0))
+    local index = m.playerIndex
     if m.playerIndex == 0 then
         if not startup_init_stall() then
             return NO_SOUND
         end
-    end
-    local index = m.playerIndex
-    if playerSample[index] ~= nil and type(playerSample[index]) ~= TYPE_STRING then
-        stop_sound_with_reverb(playerSample[index])
     end
 
     -- Add punch "woosh" since NO_SOUND removes it
@@ -220,15 +225,20 @@ function custom_character_sound(m, sound, pos)
     if voiceTable == nil then return end
 
     -- Load the appropriate sample
-    local voice = character_get_voice(m)[sound]
-    if voice == nil then return NO_SOUND end
-    if type(voice) == TYPE_TABLE then
-        if #voice > 0 then
-            playerSample[index] = voice[math.random(1, #voice)]
+    local voice = character_get_sound(m, sound)
+    if voice == nil then
+        stop_sound_with_reverb(playerSample[index])
+        return NO_SOUND
+    elseif type(voice) == TYPE_INTEGER then
+        if voice == 0 then
+            return 0
         else
+            play_sound(voice, m.marioObj.header.gfx.cameraToObject)
+            stop_sound_with_reverb(playerSample[index])
             return NO_SOUND
         end
     else
+        stop_sound_with_reverb(playerSample[index])
         playerSample[index] = voice
     end
 
@@ -297,12 +307,13 @@ function custom_character_snore(m)
     -- Check empty table for no sound
     if voiceTable == nil then return NO_SOUND end
     
-    local snoreTable = voiceTable[CHAR_SOUND_SNORING3]
+    local snoreTable = character_get_sound(m, CHAR_SOUND_SNORING3)
     if snoreTable == nil or snoreTable._pointer ~= nil then
         snoreTable = {}
         for i = CHAR_SOUND_SNORING1, CHAR_SOUND_SNORING3 do
-            if voiceTable[i] ~= nil then
-                table.insert(snoreTable, voiceTable[i])
+            local snoreSound = character_get_sound(m, i)
+            if snoreSound ~= nil then
+                table.insert(snoreTable, snoreSound)
             end
         end
     end
@@ -334,9 +345,15 @@ function custom_character_snore(m)
     end
 end
 
+local pauseStop = false
 local function update()
     if is_game_paused() then
-        stop_all_custom_character_sounds()
+        if not pauseStop then
+            stop_all_custom_character_sounds()
+            pauseStop = true
+        end
+    else
+        pauseStop = false
     end
 end
 
